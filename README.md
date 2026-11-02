@@ -43,6 +43,8 @@ Requires Hermes 0.21.5 and the relevant plugin APIs; see the [tested baseline](d
 
 The system prompt section takes effect in new conversations. Background execution requires a running scheduler and an available model. Scheduled checks, research and content generation use the existing model and tools at their normal cost.
 
+Mutation-lock acquisition waits at most two seconds per lock boundary, including local-thread contention. A busy boundary fails with `resource_busy` instead of waiting indefinitely; it does not clear the holder, roll back an earlier completed step, or authorize replay of an uncertain request. The bound is not an overall initialization or critical-section deadline. Inspect the original operation and coordinate active owners before recovery; never delete live lock files to bypass contention.
+
 ## Feature comparison
 
 The plugin sets up its jobs and rules on first load, using the existing Hermes model and sources, with notifications handled in the current profile's Bot Chat.
