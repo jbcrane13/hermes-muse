@@ -58,6 +58,8 @@ def _file_lock(path):
         try:
             while True:
                 check_cancelled()
+                if time.monotonic() >= deadline:
+                    raise DomainError('resource_busy', 'Muse lock wait expired; inspect the original request before retrying')
                 try:
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                     acquired = True

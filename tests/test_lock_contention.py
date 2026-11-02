@@ -108,5 +108,30 @@ with open(sys.argv[1], 'r+b') as candidate:
             self.assertEqual(store.read('fixture', 'nested'), {'value': 'kept'})
 
 
+    def test_expired_kernel_wait_does_not_enter_after_holder_releases(self):
+        from unittest.mock import patch
+        from hermes_muse.locks import file_lock
+        from hermes_muse.content_io import DomainError
+
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary).resolve()
+            Store(home)
+            path = home / 'muse/mutations.lock'
+            clock = [0.0]
+            with path.open('r+b') as holder:
+                fcntl.flock(holder, fcntl.LOCK_EX)
+
+                def release_after_deadline(_seconds):
+                    clock[0] = 3.0
+                    fcntl.flock(holder, fcntl.LOCK_UN)
+
+                with patch('hermes_muse.locks.time.monotonic', side_effect=lambda: clock[0]), \
+                     patch('hermes_muse.locks.time.sleep', side_effect=release_after_deadline):
+                    with self.assertRaises(DomainError) as caught:
+                        with file_lock(path):
+                            self.fail('An expired waiter entered its critical section')
+                    self.assertEqual(caught.exception.code, 'resource_busy')
+
+
 if __name__ == '__main__':
     unittest.main()
